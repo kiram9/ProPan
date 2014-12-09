@@ -1,5 +1,6 @@
 ProPan
 ======
+![ProPantilt Controller ](/doc/pantiltwithex1.jpg)
 
 Pan tilt control software and hardware documentation. 
 
