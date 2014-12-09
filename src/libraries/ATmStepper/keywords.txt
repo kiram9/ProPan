@@ -1,0 +1,30 @@
+#######################################
+# Syntax Coloring Map For Test
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+ATmStepper	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+ATmStepperInit	KEYWORD2
+setvelocity1x	KEYWORD2
+setvelocity1y	KEYWORD2
+setpos	KEYWORD2
+getpos1x KEYWORD2
+getpos1y KEYWORD2
+findzero KEYWORD2
+run KEYWORD2
+stop KEYWORD2
+
+######################################
+# Instances (KEYWORD2)
+#######################################
+
+#######################################
+# Constants (LITERAL1)
+#######################################
