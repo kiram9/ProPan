@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 //TODO FIX VELOCITY RAMPING FUNCTIONS IN ATMSTEPPER.CPP 
-#define VERSION  "Pan Tilt V1.3B C 2012 Kieran Levin"
+#define VERSION  "Pan Tilt V1.3C C 2014 Kieran Levin"
 #include <Spi.h>
 #include <Psx_analog.h>                                          // Includes the Psx Library 
 
@@ -83,6 +83,7 @@ int offset;
 int i;
 
 char pressed; 
+char mdebug; 
 
 // bool to keep track if the ptz controls are flipped 
 char flipped; 
@@ -163,6 +164,30 @@ void updateFocus(byte raw)
   else 
   servFocus.write(serv_cal + 0x20); 
 }
+
+void printState(){
+  
+  Serial.print("\n");                                            // the button data
+  Serial.print(Psx.Controller_mode, HEX);     // prints value as string in hexadecimal (base 16) 
+  Serial.print(','); 
+  Serial.print(Psx.digital_buttons, HEX);     // prints value as string in hexadecimal (base 16)  
+  Serial.print(','); 
+  Serial.print(Psx.Right_x, HEX);     // prints value as string in hexadecimal (base 16)    
+  Serial.print(Psx.Right_y, HEX);     // prints value as string in hexadecimal (base 16)    
+  Serial.print(Psx.Left_x, HEX);     // prints value as string in hexadecimal (base 16)    
+  Serial.print(Psx.Left_y, HEX);     // prints value as string in hexadecimal (base 16)      
+  Serial.print(','); 
+  Serial.print(psxtovelocity(Psx.Left_x), DEC);
+  Serial.print(',');
+
+  Serial.print(ATmStepper::getpos1x(), DEC);
+  Serial.print(','); 
+  Serial.print(ATmStepper::getpos1y(), DEC);
+    Serial.print(','); 
+  Serial.print(serv_cal, DEC);
+  
+}
+
 // prints help on the serial interface  (does not have enough program mem window to work...)
 //void serialHelp()
 //{
@@ -182,6 +207,7 @@ void updateFocus(byte raw)
 // handles all serial messages when they are ready 
 void messageReady() 
 {
+  int temp = 0; 
   switch (message.readChar())
   {
     case 'M': //move to position
@@ -223,6 +249,48 @@ void messageReady()
     case 'H':// show help 
       Serial.println("Help: www.kieranlevin.com"); 
       break;     
+    case 'u': //remote update frame
+    case 'U':
+  
+      
+      // output analog values to correct pins 
+      updateFocus(message.readInt()); 
+      
+      temp = message.readInt(); //zoom control
+      if (temp > 148 || temp < 108){
+	    analogWrite(PinZoom, zoommodifier(255-temp));
+      }
+      else {
+        analogWrite(PinZoom, zoommodifier(0x80));
+      }
+      
+      ATmStepper::setvelocity1x(-psxtovelocity(message.readInt()));
+      ATmStepper::setvelocity1y(psxtovelocity(message.readInt()));
+      
+      temp = message.readInt(); //button states...
+      if ( (temp & 0x01) == 0x01 )
+        digitalWrite(PinRec, HIGH);
+      else 
+        digitalWrite(PinRec, LOW);
+        
+      if ( (temp & 0xc) == 0x0c){
+        Serial.println("Saving settings"); 
+        savePresets();
+        delay(1000);
+      }else if ( (temp & 0xc) == 0x08){
+        offset++;
+        delay(250);
+      }else if ( (temp & 0xc) == 0x04){
+        offset--;
+        delay(250);
+      }
+      //Serial.println("Got remote update"); 
+      break; 
+    case 'd':
+    case 'D':
+      mdebug = mdebug^1;
+      break; 
+      
     default: 
       Serial.println("Invalid"); 
       break; 
@@ -235,13 +303,17 @@ void messageReady()
           message.readInt();
           Serial.println("Garbage in message Detected"); 
        }
-       Serial.println("OK"); 
+       //Serial.println("OK"); 
 }
+
+
+
+
 // initialize the controller head 
 void setup()
 {
   //delay(10);
-  Serial.begin(9600); 
+  Serial.begin(4800); 
   Serial.println(VERSION);
   Serial.println("Please wait..."); 
   ///////////////////////////////////////////
@@ -255,7 +327,8 @@ void setup()
   delay(300);
   /////////////////////////////////////////////////////
   Serial.println("\tNVRAM...");   
-  pressed = 0; 
+  pressed = 0;
+  mdebug = 0;
   if(EEPROMVALIDVAL == EEPROM.read(EEPROMVALID))
   { 
     offset = int(char(EEPROM.read(EEPROMCENTER)));
@@ -307,7 +380,6 @@ void setup()
   Serial.println("Initialization complete."); 
 
 }
-
 
   
 
@@ -445,8 +517,6 @@ void loop()
            default: 
             break;
           }
-            
-          
   }
   else if (0x40 == (Psx.Controller_mode & 0xF0)) // then we are in digital mode... we should switch to analog
   {
@@ -456,24 +526,8 @@ void loop()
     delay(100);
   }
   //Debugging information.... 
-  Serial.print("\n");                                            // the button data
-  Serial.print(Psx.Controller_mode, HEX);     // prints value as string in hexadecimal (base 16) 
-  Serial.print(','); 
-  Serial.print(Psx.digital_buttons, HEX);     // prints value as string in hexadecimal (base 16)  
-  Serial.print(','); 
-  Serial.print(Psx.Right_x, HEX);     // prints value as string in hexadecimal (base 16)    
-  Serial.print(Psx.Right_y, HEX);     // prints value as string in hexadecimal (base 16)    
-  Serial.print(Psx.Left_x, HEX);     // prints value as string in hexadecimal (base 16)    
-  Serial.print(Psx.Left_y, HEX);     // prints value as string in hexadecimal (base 16)      
-  Serial.print(','); 
-  Serial.print(psxtovelocity(Psx.Left_x), DEC);
-  Serial.print(',');
-
-  Serial.print(ATmStepper::getpos1x(), DEC);
-  Serial.print(','); 
-  Serial.print(ATmStepper::getpos1y(), DEC);
-    Serial.print(','); 
-  Serial.print(serv_cal, DEC);
-  //Serial.print(','); 
-  //Serial.print(servPosition, DEC);  
+  if (mdebug){
+    printState();
+  }
 }
+
